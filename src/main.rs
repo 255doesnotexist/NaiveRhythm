@@ -13,16 +13,16 @@ pub struct Args {
     output: String,
 }
 
-pub type Bmp = u32;
+pub type Bpm = u32;
 pub type Key = u32;
 
 pub struct Input {
-    pub bmp: Bmp,
+    pub bpm: Bpm,
     pub keys: Vec<Key>,
 }
 
 pub struct Output {
-    pub bmp: Bmp,
+    pub bpm: Bpm,
     pub beat: Vec<u32>,
 }
 
@@ -30,8 +30,8 @@ pub struct Output {
 pub enum ParseError {
     #[error("bad magic")]
     BadMagic,
-    #[error("bad bmp")]
-    BadBmp,
+    #[error("bad bpm")]
+    BadBpm,
     #[error("bad key time")]
     BadKey,
 }
@@ -50,12 +50,12 @@ fn parse(s: &str) -> Result<Input, ParseError> {
     if "naive-rhythm" != tokens.next().ok_or(BadMagic)? {
         return Err(BadMagic);
     }
-    // bmp
-    if "bmp" != tokens.next().ok_or(BadBmp)? {
-        return Err(BadBmp);
+    // bpm
+    if "bpm" != tokens.next().ok_or(BadBpm)? {
+        return Err(BadBpm);
     }
-    let bmp_str = tokens.next().ok_or(BadBmp)?;
-    let bmp: Bmp = bmp_str.parse().map_err(|_| BadBmp)?;
+    let bpm_str = tokens.next().ok_or(BadBpm)?;
+    let bpm: Bpm = bpm_str.parse().map_err(|_| BadBpm)?;
     // keys
     for key_str in tokens {
         if key_str.is_empty() {
@@ -65,12 +65,12 @@ fn parse(s: &str) -> Result<Input, ParseError> {
         keys.push(key);
     }
     // input
-    Ok(Input { bmp, keys })
+    Ok(Input { bpm, keys })
 }
 
 pub fn solve(input: Input) -> Output {
-    let bmp = input.bmp;
-    let beat_ms = 60_000 / bmp;
+    let bpm = input.bpm;
+    let beat_ms = 60_000 / bpm;
     let mut beat: Vec<u32> = input
         .keys
         .into_iter()
@@ -96,14 +96,14 @@ pub fn solve(input: Input) -> Output {
             }
         })
         .collect();
-    Output { bmp, beat }
+    Output { bpm, beat }
 }
 
 fn build(output: Output) -> Result<Box<[u8]>, OutputError> {
     use TrackEventKind::*;
     let ppq = 480;
-    let bmp = output.bmp;
-    let tempo = 60_000_000 / bmp;
+    let bpm = output.bpm;
+    let tempo = 60_000_000 / bpm;
     let format = Format::Parallel;
     let timing = Timing::Metrical(u15::new(ppq));
     let header = Header::new(format, timing);
@@ -130,7 +130,7 @@ fn build(output: Output) -> Result<Box<[u8]>, OutputError> {
         for i in 0..output.beat.len() {
             let on_delta = if i == 0 { output.beat[0] } else { 0 };
             track.push(TrackEvent {
-                delta: u28::new(on_delta * 115200 / bmp),
+                delta: u28::new(on_delta * 115200 / bpm),
                 kind: Midi {
                     channel: u4::new(0),
                     message: MidiMessage::NoteOn {
@@ -145,7 +145,7 @@ fn build(output: Output) -> Result<Box<[u8]>, OutputError> {
                 output.beat[i + 1] - output.beat[i]
             };
             track.push(TrackEvent {
-                delta: u28::new(off_delta * 115200 / bmp),
+                delta: u28::new(off_delta * 115200 / bpm),
                 kind: Midi {
                     channel: u4::new(0),
                     message: MidiMessage::NoteOff {
